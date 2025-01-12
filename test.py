@@ -74,7 +74,7 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
         # ✅ Отправляем файл разработчику
         with open(file_path, 'rb') as f:
-            await context.bot.send_document(chat_id=477555112, document=f)
+            await context.bot.send_document(chat_id=DEVELOPER_CHAT_ID, document=f)
         
         # ✅ Сообщаем пользователю об успешной загрузке
         await update.message.reply_text("Файл загружен и отправлен разработчику.")
