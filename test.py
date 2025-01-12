@@ -1,4 +1,5 @@
 import openai
+from openai import OpenAI
 import os
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
@@ -19,6 +20,7 @@ if not OPENAI_API_KEY or not TELEGRAM_TOKEN:
     raise ValueError("Необходимо задать переменные окружения OPENAI_API_KEY и TELEGRAM_TOKEN")
 
 openai.api_key = OPENAI_API_KEY
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 # ✅ Обработчик команды /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -34,7 +36,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     try:
         # 🔧 Запрос к OpenAI API (с использованием openai.chat.completions.create())
-        response = openai.chat.completions.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
@@ -45,7 +47,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         )
 
         # ✅ Получение ответа и отправка пользователю
-        answer = response['choices'][0]['message']['content'].strip()
+        #answer = response['choices'][0]['message']['content'].strip()
+        answer = response.choices[0].message.content
         await update.message.reply_text(answer)
 
     except openai.OpenAIError as e:
