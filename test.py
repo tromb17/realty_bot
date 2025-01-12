@@ -30,7 +30,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         answer = response.choices[0].message.content
         await update.message.reply_text(answer)
 
-    except openai.error.OpenAIError as e:
+    except openai.OpenAIError as e:
         logging.error(f"Ошибка API OpenAI: {e}")
         await update.message.reply_text("Произошла ошибка при подключении к OpenAI.")
     except Exception as e:
