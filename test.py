@@ -83,6 +83,18 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     else:
         await update.message.reply_text("Пожалуйста, отправьте Excel файл в формате .xlsx или .xls.")
 
+# ✅ Обработчик команды /stop_server
+async def stop_server(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id = update.message.from_user.id
+
+    # Проверяем, что команду ввел разработчик
+    if str(user_id) != DEVELOPER_CHAT_ID:
+        await update.message.reply_text("У вас нет прав для остановки сервера.")
+        return
+
+    await update.message.reply_text("Сервер останавливается...")
+    os.system("kill 1")
+
 # ✅ Главная функция запуска бота
 def main() -> None:
     logger.info("Запуск бота...")
@@ -93,6 +105,7 @@ def main() -> None:
     application.add_handler(CommandHandler('start', start))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
+    application.add_handler(CommandHandler('stop_server', stop_server))
 
     # Запускаем бота
     application.run_polling()
@@ -100,6 +113,3 @@ def main() -> None:
 # ✅ Запуск скрипта
 if __name__ == '__main__':
     main()
-
-
-
