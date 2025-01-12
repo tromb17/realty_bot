@@ -3,7 +3,6 @@ import os
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import logging
-from typing import Any
 
 # ✅ Настройка логирования
 logging.basicConfig(
@@ -34,19 +33,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
 
     try:
-        # 🔧 Запрос к OpenAI API (с учетом последней версии SDK)
-        response = await openai.ChatCompletion.acreate(
+        # 🔧 Запрос к OpenAI API (с использованием openai.chat.completions.create())
+        response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": user_text}
             ],
-            max_tokens=10,
+            max_tokens=100,
             temperature=0.7
         )
 
         # ✅ Получение ответа и отправка пользователю
-        answer = response.choices[0].message.content.strip()
+        answer = response['choices'][0]['message']['content'].strip()
         await update.message.reply_text(answer)
 
     except openai.OpenAIError as e:
