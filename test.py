@@ -28,23 +28,23 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 # ✅ Обработчик текстовых сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_text = update.message.text.strip()
-    
+
     if not user_text:
         await update.message.reply_text("Пожалуйста, напишите сообщение.")
         return
 
     try:
-        # 🔧 Запрос к OpenAI API
+        # 🔧 Запрос к OpenAI API (с учетом последней версии SDK)
         response = await openai.ChatCompletion.acreate(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": user_text}
             ],
-            max_tokens=10,  # Увеличено количество токенов
+            max_tokens=10,
             temperature=0.7
         )
-        
+
         # ✅ Получение ответа и отправка пользователю
         answer = response.choices[0].message.content.strip()
         await update.message.reply_text(answer)
@@ -60,7 +60,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 # ✅ Главная функция запуска бота
 def main() -> None:
     logger.info("Запуск бота...")
-    
+
     application = Application.builder().token(TELEGRAM_TOKEN).build()
 
     # Добавляем обработчики
