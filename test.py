@@ -1,7 +1,8 @@
 import openai
+import os
 
 # Укажите свой API-ключ
-openai.api_key = "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"
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Пример запроса к модели GPT
 response = openai.chat.completions.create(
