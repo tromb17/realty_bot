@@ -73,11 +73,13 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await file.download_to_drive(file_path)
 
         # ✅ Отправляем файл разработчику
-        with open(file_path, 'rb') as f:
-            await context.bot.send_document(chat_id=DEVELOPER_CHAT_ID, document=f)
-        
-        # ✅ Сообщаем пользователю об успешной загрузке
-        await update.message.reply_text("Файл загружен и отправлен разработчику.")
+        try:
+            with open(file_path, 'rb') as f:
+                await context.bot.send_document(chat_id=DEVELOPER_CHAT_ID, document=f)
+            await update.message.reply_text("Файл успешно отправлен разработчику.")
+        except Exception as e:
+            logger.error(f"Ошибка при отправке файла разработчику: {e}")
+            await update.message.reply_text("Произошла ошибка при отправке файла разработчику.")
     else:
         await update.message.reply_text("Пожалуйста, отправьте Excel файл в формате .xlsx или .xls.")
 
