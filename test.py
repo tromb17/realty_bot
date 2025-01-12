@@ -26,7 +26,7 @@ openai.api_key = OPENAI_API_KEY
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 # ✅ Главное меню с кнопками
-main_menu_keyboard = [['/start', '/menu'], ['/help', '/stop_server']]
+main_menu_keyboard = [['/start', '/menu'], ['/help', '/upload'], ['/stop_server']]
 reply_markup = ReplyKeyboardMarkup(main_menu_keyboard, resize_keyboard=True)
 
 # ✅ Обработчик команды /start
@@ -43,6 +43,7 @@ async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "/start - Запустить бота\n"
         "/menu - Показать меню команд\n"
         "/help - Помощь по работе с ботом\n"
+        "/upload - Загрузить файл для обработки\n"
         "/stop_server - Остановить сервер (только для разработчика)\n"
     )
     await update.message.reply_text(menu_text, reply_markup=reply_markup)
@@ -56,9 +57,36 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "/start - Запустить бота\n"
         "/menu - Показать меню команд\n"
         "/help - Помощь по работе с ботом\n"
+        "/upload - Загрузить файл для обработки\n"
         "/stop_server - Остановить сервер (только для разработчика)"
     )
     await update.message.reply_text(help_text)
+
+# ✅ Обработчик команды /upload
+async def upload(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.message.reply_text("Пожалуйста, загрузите ваш файл (Excel формат).")
+
+# ✅ Обработчик документов (Excel файлов)
+async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    document = update.message.document
+
+    # Проверяем, что файл является Excel файлом
+    if document.mime_type in ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel']:
+        # Скачиваем файл во временную папку
+        file: File = await context.bot.get_file(document.file_id)
+        file_path = f"/tmp/{document.file_name}"
+        await file.download_to_drive(file_path)
+
+        # ✅ Отправляем файл разработчику
+        try:
+            with open(file_path, 'rb') as f:
+                await context.bot.send_document(chat_id=DEVELOPER_CHAT_ID, document=f)
+            await update.message.reply_text("Файл успешно отправлен разработчику.")
+        except Exception as e:
+            logger.error(f"Ошибка при отправке файла разработчику: {e}")
+            await update.message.reply_text("Произошла ошибка при отправке файла разработчику.")
+    else:
+        await update.message.reply_text("Пожалуйста, отправьте Excel файл в формате .xlsx или .xls.")
 
 # ✅ Обработчик текстовых сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -114,6 +142,7 @@ def main() -> None:
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('menu', menu))
     application.add_handler(CommandHandler('help', help_command))
+    application.add_handler(CommandHandler('upload', upload))
     application.add_handler(CommandHandler('stop_server', stop_server))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
