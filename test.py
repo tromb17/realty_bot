@@ -1,7 +1,7 @@
 import openai
 from openai import OpenAI
 import os
-from telegram import Update, File
+from telegram import Update, File, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import logging
 import pandas as pd
@@ -25,9 +25,40 @@ if not OPENAI_API_KEY or not TELEGRAM_TOKEN or not DEVELOPER_CHAT_ID:
 openai.api_key = OPENAI_API_KEY
 client = OpenAI(api_key=OPENAI_API_KEY)
 
+# ✅ Главное меню с кнопками
+main_menu_keyboard = [['/start', '/menu'], ['/help', '/stop_server']]
+reply_markup = ReplyKeyboardMarkup(main_menu_keyboard, resize_keyboard=True)
+
 # ✅ Обработчик команды /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text('Привет! Я бот ChatGPT. Вы можете отправить мне Excel файл для обработки.')
+    await update.message.reply_text(
+        'Привет! Я бот ChatGPT. Вот список доступных команд:',
+        reply_markup=reply_markup
+    )
+
+# ✅ Обработчик команды /menu
+async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    menu_text = (
+        "📋 Доступные команды:\n"
+        "/start - Запустить бота\n"
+        "/menu - Показать меню команд\n"
+        "/help - Помощь по работе с ботом\n"
+        "/stop_server - Остановить сервер (только для разработчика)\n"
+    )
+    await update.message.reply_text(menu_text, reply_markup=reply_markup)
+
+# ✅ Обработчик команды /help
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    help_text = (
+        "🤖 Я бот, который использует OpenAI API для ответа на ваши вопросы.\n"
+        "Вы можете отправить мне текстовое сообщение или загрузить Excel файл для обработки.\n\n"
+        "🛠 Команды:\n"
+        "/start - Запустить бота\n"
+        "/menu - Показать меню команд\n"
+        "/help - Помощь по работе с ботом\n"
+        "/stop_server - Остановить сервер (только для разработчика)"
+    )
+    await update.message.reply_text(help_text)
 
 # ✅ Обработчик текстовых сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -61,28 +92,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         logger.error(f"Непредвиденная ошибка: {e}")
         await update.message.reply_text("Произошла непредвиденная ошибка. Пожалуйста, попробуйте позже.")
 
-# ✅ Обработчик документов (Excel файлов)
-async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    document = update.message.document
-
-    # Проверяем, что файл является Excel файлом
-    if document.mime_type in ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel']:
-        # Скачиваем файл во временную папку
-        file: File = await context.bot.get_file(document.file_id)
-        file_path = f"/tmp/{document.file_name}"
-        await file.download_to_drive(file_path)
-
-        # ✅ Отправляем файл разработчику
-        try:
-            with open(file_path, 'rb') as f:
-                await context.bot.send_document(chat_id=DEVELOPER_CHAT_ID, document=f)
-            await update.message.reply_text("Файл успешно отправлен разработчику.")
-        except Exception as e:
-            logger.error(f"Ошибка при отправке файла разработчику: {e}")
-            await update.message.reply_text("Произошла ошибка при отправке файла разработчику.")
-    else:
-        await update.message.reply_text("Пожалуйста, отправьте Excel файл в формате .xlsx или .xls.")
-
 # ✅ Обработчик команды /stop_server
 async def stop_server(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.message.from_user.id
@@ -103,9 +112,11 @@ def main() -> None:
 
     # Добавляем обработчики
     application.add_handler(CommandHandler('start', start))
+    application.add_handler(CommandHandler('menu', menu))
+    application.add_handler(CommandHandler('help', help_command))
+    application.add_handler(CommandHandler('stop_server', stop_server))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
-    application.add_handler(CommandHandler('stop_server', stop_server))
 
     # Запускаем бота
     application.run_polling()
