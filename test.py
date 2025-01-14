@@ -27,7 +27,7 @@ openai.api_key = OPENAI_API_KEY
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 # ✅ Ссылка на веб-приложение Google Apps Script
-GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/your-script-id/exec"
+GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyVQo3NCKrtjHahNomfj0QjCiDVq_y3DW0naLc4AzuVAkoCSOAe5igPFg93FiZz-ldLmg/exec"
 
 # ✅ Главное меню с кнопками
 main_menu_keyboard = [['/start', '/menu'], ['/help', '/upload'], ['/stop_server']]
