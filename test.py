@@ -5,6 +5,7 @@ from telegram import Update, File, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import logging
 import pandas as pd
+import requests  # 📌 Для работы с веб-запросами
 
 # ✅ Настройка логирования
 logging.basicConfig(
@@ -24,6 +25,9 @@ if not OPENAI_API_KEY or not TELEGRAM_TOKEN or not DEVELOPER_CHAT_ID:
 # ✅ Инициализация OpenAI клиента
 openai.api_key = OPENAI_API_KEY
 client = OpenAI(api_key=OPENAI_API_KEY)
+
+# ✅ Ссылка на веб-приложение Google Apps Script
+GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/your-script-id/exec"
 
 # ✅ Главное меню с кнопками
 main_menu_keyboard = [['/start', '/menu'], ['/help', '/upload'], ['/stop_server']]
@@ -48,89 +52,35 @@ async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
     await update.message.reply_text(menu_text, reply_markup=reply_markup)
 
-# ✅ Обработчик команды /help
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    help_text = (
-        "🤖 Я бот, который использует OpenAI API для ответа на ваши вопросы.\n"
-        "Вы можете отправить мне текстовое сообщение или загрузить Excel файл для обработки.\n\n"
-        "🛠 Команды:\n"
-        "/start - Запустить бота\n"
-        "/menu - Показать меню команд\n"
-        "/help - Помощь по работе с ботом\n"
-        "/upload - Загрузить файл для обработки\n"
-        "/stop_server - Остановить сервер (только для разработчика)"
-    )
-    await update.message.reply_text(help_text)
-
-# ✅ Обработчик команды /upload
-async def upload(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text("Пожалуйста, загрузите ваш файл (Excel формат).")
-
-# ✅ Обработчик документов (Excel файлов)
-async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    document = update.message.document
-
-    # Проверяем, что файл является Excel файлом
-    if document.mime_type in ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel']:
-        # Скачиваем файл во временную папку
-        file: File = await context.bot.get_file(document.file_id)
-        file_path = f"/tmp/{document.file_name}"
-        await file.download_to_drive(file_path)
-
-        # ✅ Отправляем файл разработчику
-        try:
-            with open(file_path, 'rb') as f:
-                await context.bot.send_document(chat_id=DEVELOPER_CHAT_ID, document=f)
-            await update.message.reply_text("Файл успешно отправлен разработчику.")
-        except Exception as e:
-            logger.error(f"Ошибка при отправке файла разработчику: {e}")
-            await update.message.reply_text("Произошла ошибка при отправке файла разработчику.")
-    else:
-        await update.message.reply_text("Пожалуйста, отправьте Excel файл в формате .xlsx или .xls.")
-
-# ✅ Обработчик текстовых сообщений
+# ✅ Обработчик текстового запроса "выведи <номер> строку"
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_text = update.message.text.strip()
+    user_text = update.message.text.strip().lower()
 
-    if not user_text:
-        await update.message.reply_text("Пожалуйста, напишите сообщение.")
-        return
+    if "выведи" in user_text and "строку" in user_text:
+        try:
+            # Получаем номер строки из сообщения пользователя
+            row_number = int(user_text.split()[1])
 
-    try:
-        # 🔧 Запрос к OpenAI API
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": user_text}
-            ],
-            max_tokens=100,
-            temperature=0.7
-        )
+            # Запрос к веб-приложению Apps Script
+            response = requests.get(GOOGLE_APPS_SCRIPT_URL)
+            response.raise_for_status()
 
-        # ✅ Получение ответа и отправка пользователю
-        answer = response.choices[0].message.content.strip()
-        await update.message.reply_text(answer)
+            # Преобразуем данные из JSON
+            data = response.json()
 
-    except openai.OpenAIError as e:
-        logger.error(f"Ошибка API OpenAI: {e}")
-        await update.message.reply_text("Произошла ошибка при подключении к OpenAI. Попробуйте позже.")
-    
-    except Exception as e:
-        logger.error(f"Непредвиденная ошибка: {e}")
-        await update.message.reply_text("Произошла непредвиденная ошибка. Пожалуйста, попробуйте позже.")
+            # Проверяем, что запрашиваемая строка существует
+            if row_number <= len(data):
+                row_data = data[row_number - 1]
+                message = f"📊 Данные из строки {row_number}:\n" + ", ".join(map(str, row_data))
+            else:
+                message = f"Строка {row_number} не найдена в таблице."
 
-# ✅ Обработчик команды /stop_server
-async def stop_server(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_id = update.message.from_user.id
-
-    # Проверяем, что команду ввел разработчик
-    if str(user_id) != DEVELOPER_CHAT_ID:
-        await update.message.reply_text("У вас нет прав для остановки сервера.")
-        return
-
-    await update.message.reply_text("Сервер останавливается...")
-    os.system("kill 1")
+            await update.message.reply_text(message)
+        except Exception as e:
+            logger.error(f"Ошибка при обработке запроса: {e}")
+            await update.message.reply_text("Произошла ошибка при получении данных из таблицы. Проверьте запрос.")
+    else:
+        await update.message.reply_text("Пожалуйста, сформулируйте запрос в формате: 'выведи <номер> строку'.")
 
 # ✅ Главная функция запуска бота
 def main() -> None:
@@ -141,9 +91,6 @@ def main() -> None:
     # Добавляем обработчики
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('menu', menu))
-    application.add_handler(CommandHandler('help', help_command))
-    application.add_handler(CommandHandler('upload', upload))
-    application.add_handler(CommandHandler('stop_server', stop_server))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
 
