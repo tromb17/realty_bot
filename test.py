@@ -92,7 +92,7 @@ def main() -> None:
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('menu', menu))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
+    #application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
 
     # Запускаем бота
     application.run_polling()
